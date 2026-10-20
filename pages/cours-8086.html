@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Architecture des ordinateurs : 8086 et MIPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Mono:wght@400;600&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body data-root="../" data-nav="cours">
+<nav aria-label="Sections"><a href="#bases">Bases</a><a href="#compo">Composants</a><a href="#bus">Bus</a><a href="#regs">Registres</a><a href="#flags">Indicateurs</a><a href="#mem">Mémoire</a><a href="#int">Interruptions</a><a href="#risc">CISC/RISC</a><a href="#mips">MIPS</a><a href="#c2">Complément à 2</a></nav>
+<main>
+<header class="hero">
+<h1>Comment pense un microprocesseur ?</h1>
+<p class="lead">Un parcours interactif du cours « Architecture des ordinateurs » (filière SMI) : le 8086 d’Intel, sa mémoire segmentée, ses interruptions, puis le MIPS. Essayez les calculs, tout est vivant.</p>
+<div class="panel" id="calc">
+<h3>Adresse physique = 16 × segment + offset</h3>
+<p style="margin:0 0 14px;color:var(--mu)">Le 8086 n’a que des registres de 16 bits, mais il adresse 1 Mo (20 bits). Il décale le segment d’un chiffre hexadécimal, puis ajoute l’offset.</p>
+<div class="row">
+<label>Segment (hex)<input id="seg" value="E000" maxlength="4" inputmode="text"></label>
+<label>Offset (hex)<input id="off" value="1004" maxlength="4" inputmode="text"></label>
+<button id="go">Calculer</button>
+</div>
+<div id="dig"></div>
+<div class="big" id="phys" aria-live="polite"></div>
+</div>
+</header>
+
+<section id="bases">
+<h2>Les bases, avant tout le reste</h2>
+<div class="ex">
+<h3>Qu’est-ce qu’un microprocesseur ?</h3>
+<p>Un microprocesseur est une toute petite puce électronique, appelée aussi circuit intégré, qui contient des millions de minuscules interrupteurs. C’est le « cerveau » de l’ordinateur : il lit des instructions (par exemple « additionne ces deux nombres ») et les exécute, une par une, à une vitesse énorme.</p>
+<p>Vous en utilisez tous les jours sans le savoir : dans un téléphone, une voiture, une machine à laver, une télécommande. Le cours étudie un modèle historique très important, l’<b>Intel 8086</b>, car il a servi de base à toute la famille des processeurs de PC.</p>
+<h3>Bit, octet et chiffre hexadécimal</h3>
+<p>Un ordinateur est fait d’interrupteurs : le courant passe ou ne passe pas. On note ces deux états <b>0</b> et <b>1</b>. Un seul de ces chiffres s’appelle un <b>bit</b>. Un groupe de <b>8 bits</b> s’appelle un <b>octet</b>. Le 8086 travaille avec des mots de <b>16 bits</b> (deux octets d’un coup), c’est pourquoi on dit que c’est un processeur 16 bits.</p>
+<p>Écrire 1111 1010 0101 1100 est pénible et source d’erreurs. On utilise donc l’<b>hexadécimal</b> : un système à 16 symboles (0 à 9, puis A, B, C, D, E, F où A vaut 10 et F vaut 15). Un chiffre hexadécimal remplace exactement 4 bits. Ainsi 1111 1010 devient FA. Essayez avec le convertisseur :</p>
+</div>
+<div class="panel">
+<div class="row"><label>Nombre décimal (0 à 255)<input id="hn" type="number" min="0" max="255" value="250"></label></div>
+<div class="bits" id="hb" style="margin-top:14px"></div>
+<p id="ht" style="margin:0;color:var(--mu)"></p>
+</div>
+<div class="ex">
+<h3>La mémoire : une immense armoire de casiers</h3>
+<p>La mémoire centrale ressemble à une armoire avec des millions de casiers alignés. Chaque casier contient une petite information, soit une <b>donnée</b> (un nombre, une lettre), soit une <b>instruction</b> (un ordre pour le processeur). Chaque casier possède un numéro unique, son <b>adresse</b>, comme un numéro de boîte aux lettres. Le processeur peut <b>lire</b> un casier (regarder ce qu’il contient) ou y <b>écrire</b> (remplacer son contenu).</p>
+<p>On distingue la RAM, où l’on peut lire et écrire, et la ROM, qui se lit seulement. Le processeur, la mémoire et les dispositifs d’entrée/sortie (clavier, écran, disque) forment le schéma de base de Von Neumann : les trois sont reliés par des fils de communication appelés bus, que nous verrons plus bas.</p>
+<div class="tip">À retenir : le processeur calcule, la mémoire se souvient, les bus transportent.</div>
+</div>
+<details class="pg"><summary>Voir les pages du cours pour cette partie (1)</summary><div class="figs"><figure><img alt="Page 2 du cours" src="../images/page2.jpg"><figcaption>Page 2 du cours</figcaption></figure></div></details></section>
+
+<section id="compo">
+<h2>Ce qu’il y a dans le processeur</h2>
+<p class="lead">Le cours décrit quatre blocs. Voici leur rôle, avec une image de la vie courante pour chacun.</p>
+<div class="grid">
+<div class="chip"><b>Les registres</b><small>Ce sont de petites cases de stockage situées dans le processeur lui-même. Imaginez les tiroirs de votre bureau : on y met ce dont on se sert tout de suite. La RAM, elle, est l’armoire de la pièce d’à côté : il faut se déplacer, donc c’est plus lent.</small></div>
+<div class="chip"><b>L’UAL (unité arithmétique et logique)</b><small>C’est la calculatrice. Elle contient des additionneurs, des soustracteurs et des comparateurs. Les données arrivent à ses entrées, elle calcule, et le résultat sort, en général rangé dans un registre appelé accumulateur.</small></div>
+<div class="chip"><b>Le séquenceur de commande</b><small>C’est le chef d’orchestre. Il ne calcule rien lui-même, mais il décide quoi faire et dans quel ordre : tout le fonctionnement du processeur est piloté par lui.</small></div>
+<div class="chip"><b>L’interface de bus</b><small>C’est la porte d’entrée et de sortie. Elle permet aux informations d’entrer dans le processeur et d’en sortir vers la mémoire ou les périphériques.</small></div>
+</div>
+<div class="ex">
+<h3>Un petit programme, pas à pas</h3>
+<p>Prenons un programme en langage C : on pose a = 10, b = 20, puis on demande la somme. Le processeur ne comprend pas le C. Un compilateur le traduit en <b>instructions machine</b>, de longs nombres binaires que l’on écrit en hexadécimal (par exemple 0xFD001245).</p>
+<p>Ces instructions sont rangées l’une après l’autre dans la mémoire, dans une zone appelée <b>segment de code</b>. Les valeurs a, b et le résultat 30 sont rangées ailleurs, dans le <b>segment de données</b>. Une adresse spéciale, le registre IP (avec CS), pointe toujours vers la prochaine instruction à exécuter : le processeur lit l’instruction, l’exécute, avance au casier suivant, et recommence jusqu’à la fin.</p>
+<div class="tip">Pourquoi séparer code et données ? Le code est en lecture seule : cela évite qu’une erreur ne modifie par accident les ordres du programme.</div>
+</div>
+<details class="pg"><summary>Voir les pages du cours pour cette partie (3)</summary><div class="figs"><figure><img alt="Page 8 du cours" src="../images/page8.jpg"><figcaption>Page 8 du cours</figcaption></figure><figure><img alt="Page 9 du cours" src="../images/page9.jpg"><figcaption>Page 9 du cours</figcaption></figure><figure><img alt="Page 20 du cours" src="../images/page20.jpg"><figcaption>Page 20 du cours</figcaption></figure></div></details></section>
+
+<section id="bus">
+<h2>Trois bus pour dialoguer</h2>
+<p class="lead">Le microprocesseur échange des mots binaires avec la mémoire et les entrées/sorties. L’adresse part toujours du processeur ; le sens des données dépend de la commande (RD ou WR).</p>
+<div class="panel">
+<div class="tabs"><button id="rd">Lecture (RD)</button><button class="alt" id="wr">Écriture (WR)</button></div>
+<div class="bus">
+<div class="box">µP<br>8086</div>
+<div class="trk"><i></i><span>Bus d’adresses →</span></div>
+<div class="box">Mémoire<br>et E/S</div>
+<div class="trk d" id="dt"><i></i><span>Bus de données ↔</span></div>
+<div class="trk"><i style="animation-delay:-.9s"></i><span id="cm">Bus de commande : RD</span></div>
+</div>
+<p id="bt" style="margin:14px 0 0;color:var(--mu)">En lecture, les données circulent de la mémoire vers le processeur (DT/R = 0).</p>
+</div>
+<div class="ex">
+<h3>Un bus, c’est quoi exactement ?</h3>
+<p>Un bus est simplement un faisceau de fils électriques en parallèle. Chaque fil transporte un bit à la fois, donc un bus de 16 fils transporte 16 bits en même temps. Le microprocesseur en utilise trois, chacun avec un métier différent.</p>
+<h3>Le bus d’adresses : « à quel casier ? »</h3>
+<p>Avant de lire ou d’écrire, le processeur doit indiquer quel casier il vise. Il affiche donc le numéro du casier sur le bus d’adresses. Ce bus est à sens unique : <b>seul le processeur envoie des adresses</b>, jamais l’inverse (d’où une seule flèche). Le 8086 a 20 fils d’adresse, donc il peut désigner 2²⁰ = 1 048 576 casiers, soit 1 Mo. La même logique vaut pour les ports des dispositifs d’entrée/sortie.</p>
+<h3>Le bus de données : « que contient-il ? »</h3>
+<p>C’est lui qui transporte l’information elle-même, vers le processeur ou hors de lui. Il est <b>bidirectionnel</b> (flèches aux deux bouts), mais dans un seul sens à la fois, comme un pont à voie unique. Le 8086 en a 16 fils.</p>
+<h3>Le bus de commande : « lire ou écrire ? »</h3>
+<p>C’est le régulateur de la circulation. Il dit si l’on lit (signal RD) ou si l’on écrit (WR), et le signal M/IO précise si l’on s’adresse à la mémoire (1) ou aux entrées/sorties (0). Il décide ainsi du sens du bus de données : c’est ce que montre l’animation ci-dessus quand vous changez de mode.</p>
+<div class="tip">Les trois bus ne sont pas indépendants : ils suivent un ordre dans le temps (le chronogramme du cours). D’abord l’adresse, ensuite la commande, enfin les données.</div>
+<h3>Le multiplexage : partager les mêmes fils</h3>
+<p>Pour économiser des broches, le 8086 utilise les mêmes fils, AD0 à AD15, tantôt pour l’adresse et tantôt pour les données, à des moments différents. C’est le multiplexage temporel, comme une route à sens alterné. Il faut ensuite démultiplexer pour séparer adresses et données. Les 4 bits de poids fort de l’adresse, A16 à A19, sont eux multiplexés avec des bits d’état (S3 à S6).</p>
+<h3>Les signaux importants du 8086</h3>
+</div>
+<details><summary>CLK, RESET, READY, TEST</summary>CLK est l’horloge qui cadence tout le processeur, comme un métronome. RESET le remet à zéro. READY le synchronise avec une mémoire plus lente. TEST le met en attente d’un événement extérieur.</details>
+<details><summary>MN/MX : mode minimum ou maximum</summary>À 1 (minimum), le 8086 fonctionne seul et fabrique lui-même les signaux de commande (RD, WR…). À 0 (maximum), un contrôleur de bus, le 8288, les produit : ce mode permet de bâtir des systèmes à plusieurs processeurs.</details>
+<details><summary>NMI, INTR, INTA : demandes d’interruption</summary>Ce sont les entrées par lesquelles un périphérique « frappe à la porte ». INTR est une interruption normale, NMI une interruption prioritaire, et INTA signifie que le processeur l’accepte.</details>
+<details><summary>HOLD et HLDA : accès direct à la mémoire (DMA)</summary>Un périphérique peut demander (HOLD) à utiliser les bus sans passer par le processeur ; celui-ci accorde (HLDA).</details>
+<details><summary>DEN et DT/R : sens des données</summary>DEN signale que des données circulent sur le bus. DT/R vaut 1 quand le processeur envoie (écriture) et 0 quand il reçoit (lecture).</details>
+<details class="pg"><summary>Voir les pages du cours pour cette partie (4)</summary><div class="figs"><figure><img alt="Page 4 du cours" src="../images/page4.jpg"><figcaption>Page 4 du cours</figcaption></figure><figure><img alt="Page 5 du cours" src="../images/page5.jpg"><figcaption>Page 5 du cours</figcaption></figure><figure><img alt="Page 10 du cours" src="../images/page10.jpg"><figcaption>Page 10 du cours</figcaption></figure><figure><img alt="Page 11 du cours" src="../images/page11.jpg"><figcaption>Page 11 du cours</figcaption></figure></div></details></section>
+
+<section id="regs">
+<h2>Les registres du 8086</h2>
+<p class="lead">Des cellules mémoire logées dans le processeur lui-même, donc bien plus rapides que la RAM. Tous font 16 bits.</p>
+<div class="regs">
+<div class="reg"><h4>AX</h4><div>AH</div><div>AL</div></div>
+<div class="reg"><h4>BX</h4><div>BH</div><div>BL</div></div>
+<div class="reg"><h4>CX</h4><div>CH</div><div>CL</div></div>
+<div class="reg"><h4>DX</h4><div>DH</div><div>DL</div></div>
+</div>
+<div class="grid" style="margin-top:14px">
+<div class="chip"><b>SP, BP</b><small>Pointeurs : sommet de la pile et base pour les données de la pile.</small></div>
+<div class="chip"><b>SI, DI</b><small>Index source et destination : tableaux et transferts de chaînes.</small></div>
+<div class="chip"><b>IP</b><small>Adresse de la prochaine instruction, associée à CS (CS:IP).</small></div>
+<div class="chip"><b>CS, DS, ES, SS</b><small>Segments de code, de données, supplémentaire et de pile.</small></div>
+</div>
+<div class="ex">
+<h3>Pourquoi des registres ?</h3>
+<p>Quand le processeur doit calculer, il ne peut pas aller chercher chaque nombre dans la RAM : ce serait trop lent. Il garde donc les valeurs dont il se sert tout de suite dans de petites cases placées dans la puce elle-même : les <b>registres</b>. Le 8086 en possède 14, tous de 16 bits, c’est-à-dire 2 octets.</p>
+<h3>Les registres généraux : AX, BX, CX, DX</h3>
+<p>Ce sont les registres « à tout faire » : les instructions d’addition, de soustraction et d’entrée/sortie travaillent avec eux. Chacun est coupé en deux moitiés de 8 bits : la moitié haute (H pour High, les bits de poids fort) et la moitié basse (L pour Low). Ainsi AX = (AH, AL). Exemple : si AX contient 1234h, alors AH vaut 12h et AL vaut 34h. On peut changer AL sans toucher à AH : un seul registre de 16 bits se comporte donc comme trois registres.</p>
+<h3>Les pointeurs : SP et BP</h3>
+<p>La <b>pile</b> est une zone de mémoire où le programme met de côté des valeurs, comme une pile d’assiettes : on pose et on reprend toujours par le dessus. SP (Stack Pointer) indique le sommet de la pile. BP (Base Pointer) sert de repère fixe pour retrouver les données rangées dans la pile.</p>
+<h3>Les index : SI et DI</h3>
+<p>SI (Source Index) et DI (Destination Index) peuvent servir comme registres ordinaires, mais ils sont surtout utiles pour parcourir les tableaux et copier des chaînes : SI désigne l’endroit d’où l’on lit, DI l’endroit où l’on écrit. C’est l’<b>adressage indexé</b>.</p>
+<p>Exemple du cours : <code>MOV A,[SI+10000H]</code>. 10000h est l’adresse de début d’un tableau ; on lui ajoute SI pour viser la bonne case ; le contenu de cette case est copié dans A. Si A valait 2759h et que la case contenait 576Fh, A vaut maintenant 576Fh : l’ancienne valeur est écrasée.</p>
+<h3>IP et les registres de segment</h3>
+<p>IP (Instruction Pointer) contient l’adresse de la prochaine instruction à exécuter. Les registres de segment CS (code), DS (données), ES (données supplémentaires) et SS (pile) indiquent dans quelle zone de 64 Ko on se trouve (voir la section Mémoire). On les associe : CS:IP pour l’instruction suivante, DS:SI et ES:DI pour les données, SS:SP ou SS:BP pour la pile.</p>
+</div><details class="pg"><summary>Voir les pages du cours pour cette partie (4)</summary><div class="figs"><figure><img alt="Page 12 du cours" src="../images/page12.jpg"><figcaption>Page 12 du cours</figcaption></figure><figure><img alt="Page 13 du cours" src="../images/page13.jpg"><figcaption>Page 13 du cours</figcaption></figure><figure><img alt="Page 15 du cours" src="../images/page15.jpg"><figcaption>Page 15 du cours</figcaption></figure><figure><img alt="Page 19 du cours" src="../images/page19.jpg"><figcaption>Page 19 du cours</figcaption></figure></div></details></section>
+
+<section id="flags">
+<h2>Les indicateurs (flags)</h2>
+<p class="lead">Après chaque opération, l’UAL renseigne le registre d’état. Choisissez deux valeurs sur 8 bits et regardez quels indicateurs s’allument.</p>
+<div class="panel">
+<div class="row">
+<label>A (0 à 255)<input id="fa" type="number" min="0" max="255" value="200"></label>
+<label>Opération<select id="fo"><option value="+">A + B (ADD)</option><option value="-">A − B (SUB / CMP)</option></select></label>
+<label>B (0 à 255)<input id="fb" type="number" min="0" max="255" value="100"></label>
+</div>
+<div class="bits" id="fr" style="margin-top:14px"></div>
+<div class="grid" id="fl"></div>
+</div>
+<div class="ex">
+<h3>À quoi sert le registre d’état ?</h3>
+<p>Après chaque calcul, l’UAL note des informations sur le résultat dans un registre d’état. Chaque information est un simple bit, appelé <b>indicateur</b> (flag) : il vaut 1 (levé) ou 0 (baissé). Les instructions suivantes peuvent s’en servir pour décider, par exemple « si le résultat est nul, saute plus loin ».</p>
+<h3>Les quatre indicateurs de calcul</h3>
+<p><b>ZF (Zero Flag)</b> : vaut 1 si le résultat est zéro. Après une soustraction ou une comparaison (CMP), ZF = 1 signifie que les deux nombres étaient égaux.</p>
+<p><b>CF (Carry Flag, retenue)</b> : vaut 1 s’il y a une retenue au-delà du bit de poids fort. Exemple sur 4 bits : 1111 + 0001 = 1 0000. Le résultat tient sur 5 bits, donc il déborde et CF = 1. Il concerne les nombres <i>non signés</i> (positifs seulement). Il est positionné par ADD, SUB et CMP.</p>
+<p><b>SF (Sign Flag, signe)</b> : copie le bit de poids fort du résultat. Pour les entiers relatifs, ce bit indique le signe : 0 pour positif, 1 pour négatif.</p>
+<p><b>OF (Overflow Flag, dépassement)</b> : vaut 1 si le résultat signé ne tient pas dans la destination. Exemple sur 4 bits : 0111 + 0001 = 1000. En non signé, 7 + 1 = 8 est correct (CF = 0). En signé, 1000 vaut −8 : le résultat est faux, donc OF = 1. Retenez : CF surveille le monde non signé, OF le monde signé.</p>
+<h3>Les autres indicateurs</h3>
+<p><b>PF</b> (parité) : vaut 1 si le nombre de bits à 1 est pair. <b>AF</b> (retenue auxiliaire) : retenue entre les moitiés de l’octet. <b>TF</b> (trap) : exécution pas à pas, une instruction à la fois, utile pour déboguer. <b>IF</b> : autorise ou interdit les interruptions. <b>DF</b> : fixe le sens de parcours des chaînes (décrémentation).</p>
+<div class="tip">Essayez la démo ci-dessus : 200 + 100 sur 8 bits donne 44 avec CF = 1, car 300 ne tient pas sur 8 bits.</div>
+</div><details class="pg"><summary>Voir les pages du cours pour cette partie (2)</summary><div class="figs"><figure><img alt="Page 15 du cours" src="../images/page15.jpg"><figcaption>Page 15 du cours</figcaption></figure><figure><img alt="Page 16 du cours" src="../images/page16.jpg"><figcaption>Page 16 du cours</figcaption></figure></div></details></section>
+
+<section id="mem">
+<h2>Mémoire et segmentation</h2>
+<p class="lead">L’espace de 2²⁰ = 1 048 576 octets est découpé en segments de 64 Ko, dont l’adresse de départ est un multiple de 16. Un programme occupe plusieurs zones, comme le montre le cours.</p>
+<div class="mem">
+<div style="background:var(--ink);color:var(--bg)">Segment de code<br>(instructions, lecture seule)</div>
+<div style="background:var(--a);color:var(--bg)">Segment de données<br>(rodata, data, bss)</div>
+<div style="background:var(--b);color:#15233B">Tas<br>(malloc, croît vers le haut)</div>
+<div style="background:var(--ab)">Pile<br>(croît vers le bas)</div>
+</div>
+<div class="ex">
+<h3>Le problème historique : la barrière des 64 Ko</h3>
+<p>Un registre de 16 bits peut contenir 65 536 valeurs (de 0 à 65535), donc désigner au plus 64 Ko de mémoire. Les concurrents du 8086 étaient limités à ça. Les ingénieurs d’Intel voulaient atteindre 1 Mo, soit 16 fois plus.</p>
+<h3>L’astuce : deux registres combinés</h3>
+<p>Le 8086 n’a pas de registre d’adresse géant. Il fabrique une adresse de 20 bits avec deux nombres de 16 bits : un <b>segment</b> et un <b>offset</b> (déplacement). On décale le segment d’un chiffre hexadécimal vers la gauche (ce qui revient à multiplier par 16), puis on ajoute l’offset :</p>
+<p><b>adresse physique = 16 × segment + offset</b></p>
+<p>Exemple : E000:1004. On écrit E0000, on ajoute 1004, on obtient E1004h. Le calculateur du haut de la page le fait animé.</p>
+<h3>Segments et adresses logiques</h3>
+<p>Un segment est une zone de 64 Ko qui commence à une adresse multiple de 16. On note une case sous la forme <b>segment:offset</b>, appelée adresse logique. Plusieurs adresses logiques peuvent désigner la même case physique : 2000:0010 et 2001:0000 donnent toutes les deux 20010h.</p>
+<h3>Comment un programme occupe la mémoire</h3>
+<p>Le <b>segment de code</b> (ou de texte) contient les instructions, en lecture seule. Les <b>données</b> se divisent en rodata (constantes), data (variables initialisées) et bss (variables non initialisées, mises à zéro au départ). Le <b>tas</b> sert à la mémoire demandée pendant l’exécution (malloc) et grandit vers le haut. La <b>pile</b> garde les variables temporaires et les retours de fonctions, et grandit vers le bas.</p>
+</div><details class="pg"><summary>Voir les pages du cours pour cette partie (3)</summary><div class="figs"><figure><img alt="Page 17 du cours" src="../images/page17.jpg"><figcaption>Page 17 du cours</figcaption></figure><figure><img alt="Page 19 du cours" src="../images/page19.jpg"><figcaption>Page 19 du cours</figcaption></figure><figure><img alt="Page 22 du cours" src="../images/page22.jpg"><figcaption>Page 22 du cours</figcaption></figure></div></details></section>
+
+<section id="int">
+<h2>Les interruptions</h2>
+<p class="lead">Un événement dévie le flux normal du programme vers un gestionnaire, repéré par un numéro dans la table de vecteurs d’interruptions. Ouvrez une ligne.</p>
+<details><summary>00h : division par zéro</summary>Le processeur traite l’erreur quand une division par 0 survient.</details>
+<details><summary>01h : trap (pas à pas)</summary>Appelée avant chaque instruction quand TF = 1.</details>
+<details><summary>02h : NMI</summary>Interruption non masquable, pour un problème matériel grave.</details>
+<details><summary>03h à 05h : breakpoint, overflow, copie d’écran</summary>INT 3 pose un point d’arrêt, INTO signale un débordement, INT 5 répond à la touche « Impr écran ».</details>
+<details><summary>08h à 0Fh : IRQ0 à IRQ7 (périphériques)</summary>Timer, clavier, PIC2, COM2, COM1, disque dur, disquette, imprimante (LPT1).</details>
+<details><summary>10h à 1Ch : services du système</summary>10h vidéo, 13h disques, 16h clavier, 17h imprimante, 19h redémarrage, 1Ah temps, 1Ch horloge.</details>
+<p style="color:var(--mu)">Interruptions externes : provoquées par les périphériques. Interruptions internes : par le processeur. Après le traitement, les registres sont restaurés et le programme reprend, sauf pour un trap qui l’arrête définitivement.</p>
+<div class="ex">
+<h3>L’idée, avec une image</h3>
+<p>Vous lisez un livre et le téléphone sonne : vous marquez la page, vous répondez, puis vous reprenez exactement là où vous étiez. Une interruption fonctionne ainsi. Le processeur quitte son programme, exécute un petit programme spécial (le <b>gestionnaire d’interruption</b>), puis revient. Les registres sont sauvegardés puis restaurés, comme si rien ne s’était passé.</p>
+<h3>Comment le processeur trouve le bon gestionnaire</h3>
+<p>Chaque interruption a un numéro. La <b>table de vecteurs d’interruptions</b>, placée en mémoire, contient pour chaque numéro l’adresse du gestionnaire correspondant : c’est un annuaire. Le processeur lit la ligne de son numéro, saute à l’adresse indiquée et exécute.</p>
+<h3>Quatre familles</h3>
+<p>Les <b>externes</b> viennent des périphériques (clavier, souris, disque). Les <b>internes</b> viennent du processeur lui-même (erreur, division par zéro). Les <b>traps</b> sont causés par une erreur et arrêtent le programme pour de bon. Les <b>interruptions logicielles</b> sont déclenchées volontairement par une instruction INT ; le DOS s’en sert comme boîte à outils.</p>
+</div><details class="pg"><summary>Voir les pages du cours pour cette partie (2)</summary><div class="figs"><figure><img alt="Page 24 du cours" src="../images/page24.jpg"><figcaption>Page 24 du cours</figcaption></figure><figure><img alt="Page 25 du cours" src="../images/page25.jpg"><figcaption>Page 25 du cours</figcaption></figure></div></details></section>
+
+<section id="risc">
+<h2>CISC contre RISC</h2>
+<p class="lead">Le 8086 est CISC : beaucoup d’instructions, dont des macro-instructions. Le RISC en propose peu, mais plus rapides. Copier 100 octets illustre la différence.</p>
+<div class="panel">
+<div class="tabs"><button id="tc">CISC (8086)</button><button class="alt" id="tr">RISC</button></div>
+<pre id="code"></pre>
+<p id="cn" style="margin:12px 0 0;color:var(--mu)"></p>
+</div>
+<details class="pg"><summary>Voir les pages du cours pour cette partie (2)</summary><div class="figs"><figure><img alt="Page 26 du cours" src="../images/page26.jpg"><figcaption>Page 26 du cours</figcaption></figure><figure><img alt="Page 27 du cours" src="../images/page27.jpg"><figcaption>Page 27 du cours</figcaption></figure></div></details></section>
+
+<section id="mips">
+<h2>Le MIPS et son cycle machine</h2>
+<p class="lead">Instructions de 32 bits, 32 registres généraux ($0 vaut toujours zéro), une seule instruction par cycle. Le cycle se répète sans fin :</p>
+<div class="cyc" id="cyc">
+<div class="chip"><b>1. Chargement</b><small>Lire l’instruction à l’adresse contenue dans PC.</small></div>
+<div class="chip"><b>2. Incrémentation</b><small>PC augmente de 4 octets.</small></div>
+<div class="chip"><b>3. Exécution</b><small>L’UAL effectue l’opération.</small></div>
+</div>
+<p class="m" style="margin:14px 0">PC = <b id="pc" style="color:var(--a)">0x00400000</b></p>
+<div class="panel">
+<h3>Anatomie de <code>addu $10, $8, $9</code></h3>
+<div class="m" style="font-size:18px;word-break:break-all">
+<span class="f f1" title="opcode">000000</span> <span class="f f2" title="premier opérande : $8">01000</span> <span class="f f3" title="deuxième opérande : $9">01001</span> <span class="f f4" title="destination : $10">01010</span> <span class="f f6" title="non utilisé">00000</span> <span class="f f5" title="code secondaire : addu">100001</span>
+</div>
+<p style="margin:12px 0 0;color:var(--mu)">En hexadécimal : <b class="m">0x01095021</b>. Passez la souris sur chaque champ : opcode, $8, $9, destination $10, bits inutilisés, code secondaire addu. Avec <code>ori</code>, les 16 derniers bits portent directement l’opérande immédiat.</p>
+</div>
+<details class="pg"><summary>Voir les pages du cours pour cette partie (6)</summary><div class="figs"><figure><img alt="Page 31 du cours" src="../images/page31.jpg"><figcaption>Page 31 du cours</figcaption></figure><figure><img alt="Page 33 du cours" src="../images/page33.jpg"><figcaption>Page 33 du cours</figcaption></figure><figure><img alt="Page 34 du cours" src="../images/page34.jpg"><figcaption>Page 34 du cours</figcaption></figure><figure><img alt="Page 36 du cours" src="../images/page36.jpg"><figcaption>Page 36 du cours</figcaption></figure><figure><img alt="Page 42 du cours" src="../images/page42.jpg"><figcaption>Page 42 du cours</figcaption></figure><figure><img alt="Page 46 du cours" src="../images/page46.jpg"><figcaption>Page 46 du cours</figcaption></figure></div></details></section>
+
+<section id="c2">
+<h2>Complément à deux et débordement</h2>
+<p class="lead">Avec n bits, on représente de −2ⁿ⁻¹ à 2ⁿ⁻¹ − 1 (de −128 à 127 sur 8 bits). Pour obtenir −x : inverser les bits, puis ajouter 1.</p>
+<div class="panel">
+<div class="row"><label>Entier signé (−128 à 127)<input id="cv" type="number" min="-128" max="127" value="-82"></label></div>
+<div class="bits" id="cb"></div>
+<p id="cs" style="margin:0;color:var(--mu)"></p>
+<p style="margin:14px 0 0">Avec <code>add</code>, un débordement déclenche une exception. Avec <code>addu</code>, il est ignoré et le résultat est faux : AA000000 + BB000000 donne 65000000 au lieu de 165000000. En complément à 2, le résultat est correct si la retenue entrante de la colonne de poids fort égale la retenue sortante.</p>
+</div>
+<details class="pg"><summary>Voir les pages du cours pour cette partie (5)</summary><div class="figs"><figure><img alt="Page 38 du cours" src="../images/page38.jpg"><figcaption>Page 38 du cours</figcaption></figure><figure><img alt="Page 39 du cours" src="../images/page39.jpg"><figcaption>Page 39 du cours</figcaption></figure><figure><img alt="Page 40 du cours" src="../images/page40.jpg"><figcaption>Page 40 du cours</figcaption></figure><figure><img alt="Page 41 du cours" src="../images/page41.jpg"><figcaption>Page 41 du cours</figcaption></figure><figure><img alt="Page 43 du cours" src="../images/page43.jpg"><figcaption>Page 43 du cours</figcaption></figure></div></details></section>
+</main>
+<script src="../js/cours-8086.js"></script>
+<script src="../js/common.js"></script>
+</body>
+</html>

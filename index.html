@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Accueil | ArchiCours</title>
+  
+  <!-- الخطوط المستخدمة -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Mono:wght@400;600&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- ملف الأنماط -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-root="" data-nav="home">
+
+  <!-- قسم العرض الرئيسي (Hero Section) -->
+  <section class="band">
+    <div class="wrap two">
+      
+      <!-- النص التعريفي -->
+      <div>
+        <h1>Comprendre le processeur, bit après bit.</h1>
+        <p class="lead">Un cours d’architecture des ordinateurs transformé en pages interactives : schémas du cours, explications pour débutants et démonstrations à manipuler.</p>
+        <div class="btns">
+          <a class="btn tx" href="cours.html">Voir les cours</a>
+          <a class="btn sec tx" href="about.html">À propos</a>
+        </div>
+      </div>
+
+      <!-- صندوق محاكاة الـ Register -->
+      <div class="regbox">
+        <b class="tx">Un registre de 16 bits</b>
+        <div class="bitsrow" id="bits"></div>
+        <div class="rhex" id="rhex"></div>
+        <p class="tx" style="margin: 8px 0 0; color: var(--mu); font-size: 15px;">
+          Cliquez sur les bits : chaque groupe de 4 donne un chiffre hexadécimal.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- المحتوى الرئيسي -->
+  <main>
+    <!-- قسم الدروس -->
+    <section>
+      <h2 class="tx">Les cours</h2>
+      <div class="lessons" id="lessons"></div>
+      <a class="more tx" href="cours.html">Voir tous les cours</a>
+    </section>
+
+    <!-- قسم مميزات الموقع (لماذا هذا الموقع) -->
+    <section>
+      <h2>Pourquoi ce site</h2>
+      <div class="steps">
+        <div>
+          <h3>Expliqué simplement</h3>
+          <p>Chaque terme est défini comme pour un premier cours, avec des images de la vie courante.</p>
+        </div>
+        <div>
+          <h3>Les schémas du cours</h3>
+          <p>Les pages du PDF sont intégrées à chaque partie pour comparer avec l’original.</p>
+        </div>
+        <div>
+          <h3>À manipuler</h3>
+          <p>Calculez une adresse, levez des indicateurs, observez les bus : on apprend en essayant.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ملفات الجافا سكريبت -->
+  <script src="js/site.js"></script>
+  <script src="js/common.js"></script>
+
+</body>
+</html>
